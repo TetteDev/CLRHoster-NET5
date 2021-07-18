@@ -21,3 +21,6 @@ Example "appropriate" function arguments
 *    net_method_name: function name of your entrypoint
 
 *    (OPTIONAL) unlink_after_execution: placebo, will unlink the loaded .net module from peb (or atleast try to), value should be 1 or 0
+
+Here is an example video from an older revision of this
+https://vimeo.com/562119936
