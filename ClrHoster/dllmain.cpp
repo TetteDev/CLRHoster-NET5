@@ -44,7 +44,6 @@ bool __declspec(dllexport) _stdcall RunExecutable(LPCSTR runtime_version,
     static bool etw_patched = false;
 
     if (!runtimeLoaded) {
-        dprintf("Failed loading runtime");
         return false;
     }
     else {
@@ -54,7 +53,7 @@ bool __declspec(dllexport) _stdcall RunExecutable(LPCSTR runtime_version,
         }
     }
 
-    if (unlink_after_execution > 0) 
+    if (unlink_after_execution < 1) 
     {
         return CoreCLRLoader::GetInstance()->InvokeEntryPointMethod(net_namespace_name, net_class_name, net_method_name);
     }

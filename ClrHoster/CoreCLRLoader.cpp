@@ -9,7 +9,6 @@ constexpr auto CoreCLRRuntimePrePathX64 = "C:\\Program Files\\dotnet\\shared\\Mi
 constexpr auto CoreCLRRuntimePrePath = "C:\\Program Files (x86)\\dotnet\\shared\\Microsoft.NETCore.App\\";
 constexpr auto CORECLR_FILE_NAME = "coreclr.dll";
 
-
 static CoreCLRLoader* thisHandle;
 
 CoreCLRLoader* CoreCLRLoader::GetInstance()
@@ -38,13 +37,13 @@ bool CoreCLRLoader::LoadCoreCLRRuntime(LPCSTR runtimeVersion, LPCSTR dllPathDire
     DynamicCLRRuntimePath.append(FS_SEPARATOR);
     DynamicCLRRuntimePath.append(runtimeVersion);
     DynamicCLRRuntimePath.append(FS_SEPARATOR);
-    DynamicCLRRuntimePath.append("coreclr.dll");
+    DynamicCLRRuntimePath.append(CORECLR_FILE_NAME);
 
     LoadedCoreCLRRuntime = LoadLibraryExA(DynamicCLRRuntimePath.c_str(), NULL, 0);
 
     if (LoadedCoreCLRRuntime == NULL)
     {
-        dprintf("[CoreCLRLoader]: Failed to load CoreCLR from %s\n", DynamicCLRRuntimePath.c_str());
+        dprintf("[CLRHoster]: Failed to load CoreCLR from %s\n", DynamicCLRRuntimePath.c_str());
         return false;
     }
 
