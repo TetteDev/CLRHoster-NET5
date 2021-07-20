@@ -36,6 +36,7 @@ class CoreCLRLoader
 	static CoreCLRLoader* GetInstance();
 	bool InitializeCoreCLRRuntime(LPCSTR dllPathDirectory, LPCSTR dllName);
 	bool LoadCoreCLRRuntime(LPCSTR runtimeVersion, LPCSTR dllPathDirectory, LPCSTR dllName);
+	bool LoadLatestAvailableCLRRuntime(LPCSTR dllPathDirectory, LPCSTR dllName);
 	bool UnloadCoreCLRRuntime();
 	bool InvokeEntryPointMethod(LPCSTR dllNamespace, LPCSTR methodClass, LPCSTR methodName);
 };

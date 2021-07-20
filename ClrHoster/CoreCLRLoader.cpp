@@ -3,6 +3,13 @@
 #include "pch.h"
 #include "CoreCLRLoader.h"
 
+#include <filesystem>
+#include <fstream>
+
+#include <vector>
+
+namespace fs = std::filesystem;
+
 constexpr auto FS_SEPARATOR = "\\";
 constexpr auto PATH_DELIMITER = ";";
 constexpr auto CoreCLRRuntimePrePathX64 = "C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App\\";
@@ -50,6 +57,56 @@ bool CoreCLRLoader::LoadCoreCLRRuntime(LPCSTR runtimeVersion, LPCSTR dllPathDire
     return InitializeCoreCLRRuntime(dllPathDirectory, dllName);
 }
 
+bool CoreCLRLoader::LoadLatestAvailableCLRRuntime(LPCSTR dllPathDirectory, LPCSTR dllName) {
+    static std::vector<std::string> availableRuntimes;
+    char runtimePath[MAX_PATH];
+
+#if defined (_WIN64) 
+    GetFullPathNameA(CoreCLRRuntimePrePathX64, MAX_PATH, runtimePath, NULL);
+#else
+    GetFullPathNameA(CoreCLRRuntimePrePath, MAX_PATH, runtimePath, NULL);
+#endif
+
+    char* last_slash = strrchr(runtimePath, FS_SEPARATOR[0]);
+    if (last_slash != NULL)
+        *last_slash = 0;
+
+    for (auto& p : fs::directory_iterator(runtimePath)) {
+        if (p.is_directory()) {
+            std::wstring path = p.path(); // For somer reason p.path is a widestring
+                                          // So conversion from wstring to string is done below lols
+
+            auto d = path.find_last_of(L"\\");
+            if (d < -1) {
+                std::wstring _tmpWStringRuntimeName = path.substr(d + 1);
+                std::string runtimeVersionString(_tmpWStringRuntimeName.begin(), _tmpWStringRuntimeName.end());
+                availableRuntimes.push_back(runtimeVersionString);
+            }
+        }
+    }
+
+    if (availableRuntimes.size() < 1)
+        return false;
+
+    dprintf("Latest runtime version selected is '%s'", availableRuntimes.back());
+
+    DynamicCLRRuntimePath = std::string(runtimePath);
+    DynamicCLRRuntimePath.append(FS_SEPARATOR);
+    DynamicCLRRuntimePath.append(availableRuntimes.back()); // Last item should be the latest .net runtime version available
+    DynamicCLRRuntimePath.append(FS_SEPARATOR);
+    DynamicCLRRuntimePath.append(CORECLR_FILE_NAME);
+
+    LoadedCoreCLRRuntime = LoadLibraryExA(DynamicCLRRuntimePath.c_str(), NULL, 0);
+
+    if (LoadedCoreCLRRuntime == NULL)
+    {
+        dprintf("[CLRHoster]: Failed to load CoreCLR from %s\n", DynamicCLRRuntimePath.c_str());
+        return false;
+    }
+
+    return InitializeCoreCLRRuntime(dllPathDirectory, dllName);
+}
+
 bool CoreCLRLoader::InitializeCoreCLRRuntime(LPCSTR dllPathDirectory, LPCSTR dllName)
 {
     //Get CoreCLR hosting functions
@@ -59,19 +116,19 @@ bool CoreCLRLoader::InitializeCoreCLRRuntime(LPCSTR dllPathDirectory, LPCSTR dll
 
     if (InitialzeCoreCLR == NULL)
     {
-        dprintf("[CoreCLRLoader]: coreclr_initialize not found");
+        dprintf("[CLRHoster]: coreclr_initialize not found");
         return false;
     }
 
     if (CreateManagedDelegate == NULL)
     {
-        dprintf("[CoreCLRLoader]: coreclr_create_delegate not found");
+        dprintf("[CLRHoster]: coreclr_create_delegate not found");
         return false;
     }
 
     if (ShutdownCoreCLR == NULL)
     {
-        dprintf("[CoreCLRLoader]: coreclr_shutdown not found");
+        dprintf("[CLRHoster]: coreclr_shutdown not found");
         return false;
     }
 
@@ -84,7 +141,7 @@ bool CoreCLRLoader::InitializeCoreCLRRuntime(LPCSTR dllPathDirectory, LPCSTR dll
     tpaList.append(PATH_DELIMITER);
 
     //Removing string "coreclr.dll" from DynamicCLRRuntimePath, so it can have a full base directory string
-    size_t sPos = DynamicCLRRuntimePath.find("coreclr.dll");
+    size_t sPos = DynamicCLRRuntimePath.find(CORECLR_FILE_NAME);
     if (sPos != std::string::npos) DynamicCLRRuntimePath.erase(sPos, DynamicCLRRuntimePath.length());
     //End removal
 
@@ -105,11 +162,11 @@ bool CoreCLRLoader::InitializeCoreCLRRuntime(LPCSTR dllPathDirectory, LPCSTR dll
                     &DomainID);         // AppDomain ID
 
     if (hr >= 0) {
-        dprintf("[CoreCLRLoader]: CoreCLR started\n");
+        dprintf("[CLRHoster]: CoreCLR started\n");
     }
     else
     {
-        dprintf("[CoreCLRLoader]: coreclr_initialize failed - status: 0x%08x\n", hr);
+        dprintf("[CLRHoster]: coreclr_initialize failed - status: 0x%08x\n", hr);
         return false;
     }
 
@@ -122,11 +179,11 @@ bool CoreCLRLoader::UnloadCoreCLRRuntime()
 
     if (hr >= 0)
     {
-        dprintf("[CoreCLRLoader]: CoreCLR successfully shutdown\n");
+        dprintf("[CLRHoster]: CoreCLR successfully shutdown\n");
         return true;
     }
     else
-        dprintf("[CoreCLRLoader]: coreclr_shutdown failed - status: 0x%08x\n", hr);
+        dprintf("[CLRHoster]: coreclr_shutdown failed - status: 0x%08x\n", hr);
 
     return false;
 }
@@ -179,11 +236,11 @@ bool CoreCLRLoader::InvokeEntryPointMethod(LPCSTR dllNamespace, LPCSTR methodCla
     int hr = CreateManagedDelegate(HostHandle, DomainID, dllNamespace, methodClass, methodName, (void**)&managedDelegate);
 
     if (hr >= 0) {
-        dprintf("[CoreCLRLoader]: Managed delegate created\n");
+        dprintf("[CLRHoster]: Managed delegate created\n");
     }
     else
     {
-        dprintf("[CoreCLRLoader]: coreclr_create_delegate failed - status: 0x%08x\n", hr);
+        dprintf("[CLRHoster]: coreclr_create_delegate failed - status: 0x%08x\n", hr);
         return false;
     }
 

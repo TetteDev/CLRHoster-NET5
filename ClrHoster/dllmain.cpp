@@ -11,7 +11,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        // Perhaps unlink the hoster dll from peb even user doesnt manual map this
+        // Perhaps unlink the hoster dll from peb at this point already?
         //Tools::UnlinkModuleFromPEB(hModule);
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
@@ -38,6 +38,7 @@ bool __declspec(dllexport) _stdcall RunExecutable(LPCSTR runtime_version,
     if (strlen(net_namespace_name) < 1) return false;
     if (strlen(net_class_name) < 1) return false;
     if (strlen(net_method_name) < 1) return false;
+
 
     // Load runtime once only
     static bool runtimeLoaded = CoreCLRLoader::GetInstance()->LoadCoreCLRRuntime(runtime_version, net_file_directory, net_file_name);
